@@ -1,0 +1,27 @@
+{
+  "name": "express_cli",
+  "version": "1.0.0",
+  "description": "Use Express + Log4Js + Typescript + Axios + Webpack + Mysql",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "nodemon app.js",
+    "start": "node app.js"
+  },
+  "author": "Sue_52",
+  "license": "ISC",
+  "dependencies": {
+    "body-parser": "^1.19.0",
+    "cors": "^2.8.5",
+    "dotenv": "^10.0.0",
+    "express": "^4.17.1",
+    "express-jwt": "^6.1.0",
+    "express-validator": "^6.13.0",
+    "jsonwebtoken": "^8.5.1",
+    "log4js": "^6.3.0",
+    "mysql": "^2.18.1"
+  },
+  "devDependencies": {
+    "express-debug": "^1.1.1"
+  }
+}
