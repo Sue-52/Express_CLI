@@ -394,3 +394,214 @@ logger.info("Info Message");
 
 ## 开始封装 Log4js 到Express中
 
+~~~javascript
+/**
+ * Author: Sue_52
+ * Desc: 封装 log4js 中间件
+ * 参考网址：
+ * 1. Log4js封装：https://blog.csdn.net/qq_31766907/article/details/93605851?utm_medium=distribute.pc_relevant.none-task-blog-2~default~baidujs_title~default-1.no_search_link&spm=1001.2101.3001.4242.2
+ * 2. hasOwnProperty 属性：https://developer.mozilla.org/zh-CN/docs/Web/JavaScript/Reference/Global_Objects/Object/hasOwnProperty
+ * 3. Log4js 基础讲解：http://shenyujie.cc/2018/05/25/log4js-basic/
+ */
+
+// 1. 引入 log4js
+const log4js = require("log4js");
+
+// 2. 定义日志等级
+const LogType = {
+  NONE: "none",
+  DEBUG: "debug",
+  INFO: "info",
+  WARN: "warn",
+  ERROR: "error",
+  FATAL: "fatal",
+};
+
+let Kinds = ["Message"];
+
+// 封装 appenders
+/**
+ *
+ * @param {String} filename 传入文件夹地址
+ * @returns {
+ * "data":"2021-11-05T21:21:21.290",
+ * level":"INFO",
+ * category":"default",
+ * host":"DESKTOP-PCI7BHN",
+ * pid":"20368",
+ * data":'Info Message'
+ * } 输出格式为这个：
+ */
+function appenderFull(filename) {
+  return {
+    type: "dateFile", // 类型
+    filename: filename, // 存放路径
+    encoding: "utf-8", // 存储编码
+    layout: {
+      // 自定义log输出内容
+      type: "pattern",
+      pattern:
+        '{%n "data":"%d", %n "level":"%p", %n "category":"%c", %n "host":"%h", %n "pid":"%z", %n "data":\'%m\' %n}',
+    },
+    pattern: "-yyyy-MM-dd", //日志文件按日期分割
+    keepFileExt: true, // 回滚旧的日志文件时，保证以 .log结尾
+    alwaysIncludePattern: true, // 输出的日志文件名是是中包含 pattern 日期结尾
+    maxLogSize: "100M", // 文件最大存储空间
+  };
+}
+
+// 创建 appenders 、 categories
+let appenders = {
+  default: appenderFull("logs/Message/default/default.log"),
+};
+let categories = {
+  default: {
+    appenders: ["default"],
+    level: log4js.levels.ALL,
+  },
+};
+
+// 遍历
+for (const kind of Kinds) {
+  for (let type in LogType) {
+    if (LogType.hasOwnProperty(type)) {
+      type = LogType[type];
+      let key = kind + "_" + type;
+      appenders[key] = appenderFull(`logs/${kind}/${type}/${type}.log`);
+      categories[key] = {
+        appenders: [key],
+        level: type === LogType.NONE ? log4js.levels.ALL : type,
+      };
+    }
+  }
+}
+
+// 配置
+log4js.configure({
+  replaceConsole: true,
+  appenders: appenders,
+  categories: categories,
+});
+
+let KindIndex = 0;
+/** 添加日志接口，对应的日志类型将指定日志的输出文件
+ * 例如：
+ * "none"类型的日志，将把日志内容指定输出到'./business/none/none.log'文件，
+ * "error" 类型的日志，将把日志内容指定输出到'./business/none/none.log'文件。
+ * @param {LogType | String} type -- 日志类型 "none","debug","info","warn","error","fatal"
+ *                                   如果该值不为枚举中的值，那么日志的类型默认设置为"none"类型，且将该参数
+ *                                   作为日志内容的开头部分。
+ * @param {...} arguments -- 日志内容，参数个数不定（一个或者多个，如果不填，那么默认将type作为日志内容参数）
+ * @return {undefined}
+ */
+exports.log = function (type) {
+  try {
+    if (arguments.length === 0) return;
+    let more = "";
+    for (let i = 1; i < arguments.length; i++) {
+      more += more === "" ? arguments[i] : "  " + arguments[i];
+    }
+    if (
+      typeof type === "string" &&
+      arguments.length > 1 &&
+      LogType[type.toUpperCase()]
+    ) {
+      type = type.toLowerCase();
+      log4js
+        .getLogger(Kinds[KindIndex] + "_" + type)
+        [type === LogType.NONE ? LogType.DEBUG : type](more);
+    } else {
+      more = type + more;
+      log4js
+        .getLogger(Kinds[KindIndex] + "_" + LogType.NONE)
+        [LogType.DEBUG](more);
+    }
+  } catch (error) {
+    console.error(error);
+  }
+};
+
+function _registerLogFunc(type) {
+  return function () {
+    if (arguments.length === 0) return;
+    let args = [type];
+    for (let i = 0; i < arguments.length; i++) {
+      args.push(arguments[i]);
+    }
+    exports.log.apply(null, args);
+  };
+}
+
+// -----------------网络通讯日志-------------------
+
+exports.debug = _registerLogFunc(LogType.DEBUG);
+exports.info = _registerLogFunc(LogType.INFO);
+exports.warn = _registerLogFunc(LogType.WARN);
+exports.error = _registerLogFunc(LogType.ERROR);
+exports.fatal = _registerLogFunc(LogType.FATAL);
+~~~
+
+如何使用：**app.js**
+
+~~~javascript
+FLogger.log("show the result in the file");
+FLogger.info("show the result in the file");
+FLogger.warn("show the result in the file");
+FLogger.debug("show the result in the file");
+FLogger.error("show the result in the file");
+FLogger.fatal("show the result in the file");
+~~~
+
+## post 请求配置
+
+~~~powershell
+npm install body-parser;
+~~~
+
+app.js
+
+~~~javascript
+// 引入 bodyparser 包用于配置 post请求
+const bodyParser = require("body-parser");
+
+/**
+ * 通过 body-parser中间件解析req.body
+ * 根据不同的 Content-Type分别有如下两种不同的配置
+ * post请求体中的Content—Type为：application/x-www-form-urlencoded，使用配置1
+ * post请求体中的Content-Type为：application/json，使用配置2
+ */
+app.use(bodyParser.urlencoded({ extended: false }));
+app.use(bodyParser.json());
+~~~
+
+### 入门基础
+
+POST 请求报文，如下：
+
+~~~txt
+POST /test HTTP/1.1
+Host: 127.0.0.1:3000
+Content-Type: text/plain; charset=utf8
+Content-Encoding: gzip
+
+chyingp
+~~~
+
+其中需要我们注意的有Content-Type、Content-Encoding以及报文主体：
+
+- `Content-Type`：请求报文主体的类型、编码。常见的类型有`text/plain`、`application/json`、`application/x-www-form-urlencoded`。常见的编码有`utf8`、`gbk`等。
+- `Content-Encoding`：声明报文主体的压缩格式，常见的取值有`gzip`、`deflate`、`identity`。
+- 报文主体：这里是个普通的文本字符串`chyingp`。
+
+### body-parser 做了什么工作
+
+body-parser 是新鲜要点如下：
+
+1. 处理不同类型的请求体：如 `text`,`json`,`urlencoded` 等，对应的报文主体的格式口不同
+2. 处理不同的编码，如：`utf-8`,`gbk`
+3. 处理不同的压缩类型：如：`gzip`,`deflare`等
+4. 其他边界、异常的处理
+
+[Express 常用中间件 body-parser 实现解析](https://www.cnblogs.com/chyingp/p/nodejs-learning-express-body-parser.html)
+
+## 
