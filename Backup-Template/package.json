@@ -19,7 +19,9 @@
     "express-validator": "^6.13.0",
     "jsonwebtoken": "^8.5.1",
     "log4js": "^6.3.0",
-    "mysql": "^2.18.1"
+    "mysql": "^2.18.1",
+    "swagger-jsdoc": "^6.1.0",
+    "swagger-ui-express": "^4.1.6"
   },
   "devDependencies": {
     "express-debug": "^1.1.1"

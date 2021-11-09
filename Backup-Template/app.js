@@ -16,6 +16,9 @@ const port = 3000;
 // 主机
 const host = "localhost";
 
+// 引入路由
+const index = require("./routes");
+
 // 允许跨域
 app.use((req, res, next) => {
   res.header("Access-Control-Allow-Origin", "*");
@@ -49,9 +52,11 @@ app.use(bodyParser.json());
 //   console.log(result);
 //   res.end(result.username);
 // });
+// 路由挂载
+app.use(index);
 
 // 日治文件配置
-// FLogger.log("show the result in the file");
+FLogger.log("show the result in the file");
 // FLogger.info("show the result in the file");
 // FLogger.warn("show the result in the file");
 // FLogger.debug("show the result in the file");
